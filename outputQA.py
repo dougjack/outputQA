@@ -10,7 +10,7 @@ import numpy as np
 ##########################################################################################
 # Constant definitions
 ##########################################################################################
-workingDir = "C:/Users/SAC-DJackson/Documents/CAPCOG/outputQA"
+workingDir = "/Users/djackson/Documents/Shared_Windows/ERG/git/outputQA"
 transVMTfolder = "C:/Users/SAC-DJackson/Documents/CAPCOG/SEE_unzipped/TRANSVMT_2012_SCHOOL_WK"
 hour = 20
 
@@ -33,10 +33,18 @@ rampVMTdatabase = "capcog_2018_school_fr_09sep15b_offnet"
 defaultDB = "movesdb20141021cb6v2"
 summaryDB = "capcog_2018_school_fr_09sep15b_summary"
 
+# Pollutant and county to verify ramp emissions
+pollutantID = "30"
+countyID = "48021"
+
+offnetDB = "capcog_2018_school_fr_09sep15b_offnet"
+summaryDB = "capcog_2018_school_fr_09sep15b_summary"
 ##########################################################################################
 # Run
 ##########################################################################################
 os.chdir(workingDir)
+
+#%%
 #transVMTfile = glob.glob(os.path.join(transVMTfolder, "*.T" + "%02d" % hour))[0]
 #
 #data = pd.read_csv(transVMTfile, sep="\s+", header=False, 
@@ -86,6 +94,7 @@ os.chdir(workingDir)
 #VMTdailyGrp = VMTdaily.groupby(["countyID"], as_index=False)  
 #VMTdailySum = VMTdailyGrp["value"].sum()  
 
+#%%
 # Confirm that the output has all of the pollutants that it should       
 summaryTotals = queryDB(summaryDB, "SELECT * FROM summaryTotals")                        
 pollutants = queryDB(defaultDB, "SELECT * FROM pollutant ORDER BY pollutantID")
@@ -100,3 +109,12 @@ linkSummaryTotals = queryDB(summaryDB, "SELECt * FROM linkSummaryTotals LIMIT 10
 linkSummaryTotals = linkSummaryTotals.loc[linkSummaryTotals["linkID"]==3838]
 linkSummaryTotals["pollutantName"] = [pollutants.ix[int(row["pollutantID"]), "pollutantName"] for index, row in linkSummaryTotals.iterrows()]
 linkSummaryTotals.to_csv("linkSummaryTotals.csv", index=False)
+
+#%% Verify that all of the ramp emissions are in the summary database
+crosstabEmissDailySummary = queryDB(summaryDB, "SELECT * FROM crosstabEmissDailySummary WHERE pollutantID = " + pollutantID + " AND roadTypeID in (8, 9) AND countyID=" + countyID,
+                                    user="root", password="")
+emissDaily = pd.melt(crosstabEmissDailySummary, id_vars=["yearID", "monthID", "dayID",
+                                                         "countyID", "fuelTypeID", "pollutantID",
+                                                         "roadtypeID"])          
+emissDailyGrp = emissDaily.groupby(["yearID", "monthID", "dayID", "countyID"], as_index=False) 
+emissDailySum = emissDailyGrp["value"].sum()                                                        
